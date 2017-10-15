@@ -4,9 +4,9 @@ import * as R from 'ramda';
 // string -> Observable<Array<Movie>>
 export function load(url: string) {
   return Observable.create((observer: Observer<any>) => {
-    let xhr = new XMLHttpRequest();
+    const xhr = new XMLHttpRequest();
 
-    xhr.addEventListener('load', () => {
+    const onLoad = () => {
       if (xhr.status === 200) {
         const data = JSON.parse(xhr.responseText);
         observer.next(data);
@@ -14,10 +14,19 @@ export function load(url: string) {
       } else {
         observer.error(xhr.statusText);
       }
-    });
+    };
+
+    xhr.addEventListener('load', onLoad);
 
     xhr.open('GET', url);
     xhr.send();
+
+    // this is the unsubscribe logic when you need it
+    return () => {
+      console.log('xhr cleanup');
+      xhr.removeEventListener('load', onLoad);
+      xhr.abort();
+    }
   })
   .retryWhen(retryStrategy({retries: 3, delay: 1000}));
 }
