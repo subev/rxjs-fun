@@ -29,6 +29,7 @@ const load = (url: string) => {
   .retryWhen(retryStrategy({retries: 3, delay: 1000}));
 }
 
+// RetrySettings -> Observable error -> Observable error
 const retryStrategy = ({retries, delay}) => {
   // I have the feeling that everything here
   // is the forever monad function in haskell
@@ -46,9 +47,23 @@ const renderMovies = (movies) =>
     output.appendChild(div);
   });
 
+const loadWithFetch = (url: string) =>
+  // defer is like a proxy to the Observable result of the function that's passed to the executor
+  // this abstracts the call fetch() invocation and makes the whole loadWithFetch function lazy
+  // it does not execute the xhr untill someone subscribes
+  Observable.defer(() =>
+    Observable.fromPromise(fetch(url).then(r => r.json()))
+  )
+
+loadWithFetch('movies.json')
+  // comment the line below and see the network activity if loadWithFetched is not wrapped in
+  // deferred
+  .subscribe(renderMovies);
+
 click
-  //this is haskell's >>= bind method ;P
-  .flatMap(() => load('moviess.json'))
+  // this is haskell's >>= bind method ;P
+  // use load or loadWithFetch
+  .flatMap(() => loadWithFetch('movies.json'))
   .subscribe(
     renderMovies,
     (err) => console.log(`error: ${err}`),
