@@ -1,4 +1,4 @@
-import { Observable } from 'rxjs';
+import { Observable, Observer } from 'rxjs';
 import * as R from 'ramda';
 
 type Movie = { title: string; }
@@ -6,24 +6,39 @@ type Movie = { title: string; }
 const output = document.getElementById('output');
 const button = document.getElementById('button');
 
-const source = Observable.fromEvent(button, 'click')
+const click = Observable.fromEvent(button, 'click')
 
+// string -> Observable<Array<Movie>>
 const load = (url: string) => {
-  let xhr = new XMLHttpRequest();
-  xhr.addEventListener('load', () => {
-    const movies: Array<Movie> = JSON.parse(xhr.responseText);
-    movies.forEach(m => {
-      const div = document.createElement('div');
-      div.innerHTML = m.title;
-      output.appendChild(div);
-    })
+  return Observable.create((observer: Observer<any>) => {
+    console.log('load executor');
+
+    let xhr = new XMLHttpRequest();
+
+    xhr.addEventListener('load', () => {
+      const data = JSON.parse(xhr.responseText);
+      observer.next(data);
+      observer.complete();
+    });
+
+    xhr.open('GET', url);
+    xhr.send();
   });
-  xhr.open('GET', url);
-  xhr.send();
 }
 
-source.subscribe(
-  (e) => load('movies.json'),
-  console.error,
-  console.log.bind(null, "done")
-)
+// Array<Movie> -> IO ()
+const renderMovies = (movies) =>
+  movies.forEach(m => {
+    const div = document.createElement('div');
+    div.innerHTML = m.title;
+    output.appendChild(div);
+  });
+
+click
+  //this is haskell's >>= bind method ;P
+  .flatMap(() => load('movies.json'))
+  .subscribe(
+    renderMovies,
+    console.error,
+    console.log.bind(null, 'done')
+  )
